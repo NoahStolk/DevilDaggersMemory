@@ -13,8 +13,8 @@ for (; ; )
 	if (process?.MainModule == null)
 		continue;
 
-	IntPtr processAddress = NativeMethods.OpenProcess(0x0010, 1, (uint)process.Id);
-	IntPtr baseAddress = new(ReadLong(processAddress, new IntPtr(process.MainModule.BaseAddress.ToInt64()), ddstatsMarkerOffset));
+	nint processAddress = OpenProcess(0x0010, 1, (uint)process.Id);
+	nint baseAddress = (nint)ReadLong(processAddress, process.MainModule.BaseAddress, ddstatsMarkerOffset);
 
 	// Full list of offsets: https://github.com/NoahStolk/DevilDaggersCustomLeaderboards/blob/master/DOCUMENTATION.md
 	Console.WriteLine($"Player ID: {ReadInt(processAddress, baseAddress, 16)}");
@@ -26,23 +26,20 @@ for (; ; )
 	Console.Clear();
 }
 
-static T Read<T>(IntPtr processAddress, IntPtr baseAddress, int offset, uint sizeOfT, Func<byte[], T> converter)
+static T Read<T>(nint processAddress, nint baseAddress, int offset, uint sizeOfT, Func<byte[], T> converter)
 {
 	byte[] bytes = new byte[sizeOfT];
-	NativeMethods.ReadProcessMemory(processAddress, baseAddress + offset, bytes, sizeOfT, out _);
+	ReadProcessMemory(processAddress, baseAddress + offset, bytes, sizeOfT, out _);
 	return converter(bytes);
 }
 
-static float ReadFloat(IntPtr processAddress, IntPtr baseAddress, int offset) => Read(processAddress, baseAddress, offset, sizeof(float), (byteArray) => BitConverter.ToSingle(byteArray));
-static int ReadInt(IntPtr processAddress, IntPtr baseAddress, int offset) => Read(processAddress, baseAddress, offset, sizeof(int), (byteArray) => BitConverter.ToInt32(byteArray));
-static long ReadLong(IntPtr processAddress, IntPtr baseAddress, int offset) => Read(processAddress, baseAddress, offset, sizeof(long), (byteArray) => BitConverter.ToInt64(byteArray));
-static string ReadString(IntPtr processAddress, IntPtr baseAddress, int offset, uint stringLength) => Read(processAddress, baseAddress, offset, stringLength, (byteArray) => Encoding.UTF8.GetString(byteArray[0..Array.IndexOf(byteArray, (byte)0)]));
+static float ReadFloat(nint processAddress, nint baseAddress, int offset) => Read(processAddress, baseAddress, offset, sizeof(float), (byteArray) => BitConverter.ToSingle(byteArray));
+static int ReadInt(nint processAddress, nint baseAddress, int offset) => Read(processAddress, baseAddress, offset, sizeof(int), (byteArray) => BitConverter.ToInt32(byteArray));
+static long ReadLong(nint processAddress, nint baseAddress, int offset) => Read(processAddress, baseAddress, offset, sizeof(long), (byteArray) => BitConverter.ToInt64(byteArray));
+static string ReadString(nint processAddress, nint baseAddress, int offset, uint stringLength) => Read(processAddress, baseAddress, offset, stringLength, (byteArray) => Encoding.UTF8.GetString(byteArray[0..Array.IndexOf(byteArray, (byte)0)]));
 
-static class NativeMethods
-{
-	[DllImport("kernel32.dll")]
-	internal static extern IntPtr OpenProcess(uint dwDesiredAccess, int bInheritHandle, uint dwProcessId);
+[DllImport("kernel32.dll")]
+static extern IntPtr OpenProcess(uint dwDesiredAccess, int bInheritHandle, uint dwProcessId);
 
-	[DllImport("kernel32.dll")]
-	internal static extern bool ReadProcessMemory(IntPtr hProcess, IntPtr lpBaseAddress, [In, Out] byte[] buffer, uint size, out uint lpNumberOfBytesRead);
-}
+[DllImport("kernel32.dll")]
+static extern bool ReadProcessMemory(nint hProcess, nint lpBaseAddress, [In, Out] byte[] buffer, uint size, out uint lpNumberOfBytesRead);

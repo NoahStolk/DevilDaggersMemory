@@ -5,7 +5,7 @@ using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading;
 
-const int ddstatsMarkerOffset = 2259936;
+const int ddstatsMarkerOffset = 2264200;
 
 for (; ; )
 {
